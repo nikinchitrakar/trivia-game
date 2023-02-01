@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+      #messageForm { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
+      #messageInput { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
+      #messageInput:focus { outline: none; }
+      #messageForm > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+
+      #messages { list-style-type: none; margin: 0; padding: 0; }
+      #messages > li { padding: 0.5rem 1rem; }
+      #messages > li:nth-child(odd) { background: #efefef; }
+      #header { display: flex; justify-content: end; }
+    </style>
+  </head>
+  <body>
+    <header id="header">
+      <form id="nameForm" style="display: flex;">
+        <div contenteditable id="nameInput"></div>
+        <button>change</button>
+      </form>
+    </header>
+    <ul id="messages"></ul>
+    <form id="messageForm" action="">
+      <input id="messageInput" autocomplete="off" /><button>Send</button>
+    </form>
+
+    <!-- <script src="/socket.io/socket.io.js"></script> -->
+    <!-- node_modules/socket.io/client-dist/socket.io.js -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+      var socket = io();
+
+      var messages = document.getElementById('messages');
+      var messageForm = document.getElementById('messageForm');
+      var nameForm = document.getElementById('nameForm');
+      var messageInput = document.getElementById('messageInput');
+      var nameInput = document.getElementById('nameInput');
+      var playerId = '';
+      var playerName = '';
+
+      fetch("http://localhost:3000/messages")
+        .then(response => response.json())
+        .then(messages => messages.forEach(m => appendMessage(m)))
+        .catch(e => console.log(e));
+
+      messageForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (messageInput.value) {
+        console.log(playerName);
+          socket.emit('message', {
+            "senderId": playerId,
+            "name": playerName,
+            "text": messageInput.value,
+            "sentAt": Math.floor(Date.now() / 1000)
+          });
+          messageInput.value = '';
+        }
+      });
+
+      nameForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const name = nameInput.innerText;
+        if (name) {
+          try {
+            const response = await fetch("http://localhost:3000/change-name", {
+              method: "POST",
+              body: JSON.stringify({
+                "socketId": playerId,
+                "name": name
+              }),
+              headers: {
+                "Content-Type": "application/json"
+              }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(data.message);
+            } else {
+              playerName = name;
+              console.log(data.message);
+            }
+          } catch (e) {
+            console.log(e);
+          }
+        }
+      });
+
+      socket.on('connect', function() {
+        playerId = socket.id;
+        document.getElementById('nameInput').textContent = playerId;
+      });
+
+      socket.on('message', function(message) {
+        appendMessage(message);
+      });
+
+      function appendMessage(message) {
+        var item = document.createElement('li');
+        item.textContent = `${message.name ? message.name : message.senderId}: ${message.text}`;
+        messages.appendChild(item);
+        window.scrollTo(0, document.body.scrollHeight);
+      }
+    </script>
+  </body>
+</html>
