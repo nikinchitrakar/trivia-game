@@ -24,6 +24,7 @@ app.use(sessions({
 // Entities
 const players = [];
 const messages = [];
+const lobbies = [];
 
 // Functions
 const getPlayer = (req) => {
@@ -33,6 +34,7 @@ const getPlayer = (req) => {
       "sessionId": req.session.id,
       "socketId": null,
       "name": "",
+      "disconnected": false
     };
     players.push(player);
   }
@@ -84,6 +86,10 @@ io.on('connection', (socket) => {
   console.log('connected', socket.id);
 
   socket.on('disconnect', () => {
+    const player = players.find(p => p.socketId == socket.id);
+    if (player) {
+      player.disconnected = true;
+    }
     console.log('disconnected', socket.id);
   });
 
@@ -91,6 +97,10 @@ io.on('connection', (socket) => {
     console.log('message: ' + message.text);
     messages.push(message);
     io.emit('message', message);
+  });
+
+  socket.on('createLobby', (player) => {
+    console.log(player);
   });
 });
 
