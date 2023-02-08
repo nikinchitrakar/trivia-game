@@ -6,6 +6,7 @@ const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server);
+const { uuid } = require('uuidv4');
 
 // App
 // creating 24 hours from milliseconds
@@ -81,6 +82,12 @@ app.get('/player', (req, res) => {
   res.send({ player, messages });
 });
 
+app.post('/create_lobby', (req, res) => {
+  const player = req.body.player;
+  const lobby = createLobby(player);
+  res.send({'message': `Lobby created with ID: ${lobby.id}. Share this link: http://localhost:3000/lobby/${lobby.id}`});
+});
+
 // Socket
 io.on('connection', (socket) => {
   console.log('connected', socket.id);
@@ -102,6 +109,25 @@ io.on('connection', (socket) => {
   socket.on('createLobby', (player) => {
     console.log(player);
   });
+});
+
+function createLobby(player) {
+  return {
+    id: uuid(),
+    questions: [],
+    owner: player.socketId,
+    creator: player.socketId,
+    current_question: null,
+    round: 0,
+    state: 'pending',
+    round_end_time: 10,
+    time_left_ticker: 0,
+    time_new: 0
+  }
+}
+
+app.get('/lobby/:id', (req, res) => {
+  res.send(`You have joined lobby with ID: ${req.params.id}`);
 });
 
 // Server
